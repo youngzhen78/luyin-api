@@ -24,6 +24,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# VAD 按停顿断句，同一个人说话中间只要停顿超过一点就会被拆成好几句。
+# 这里把同一个说话人、间隔小于这个阈值（毫秒）的相邻句子合并成一段，
+# 减少刷屏一样的碎片化短句。觉得合并太多/太少可以调这个数。
+MERGE_GAP_MS = 1200
+
+
+def merge_consecutive(sentence_info):
+    if not sentence_info:
+        return []
+    merged = [dict(sentence_info[0])]
+    for item in sentence_info[1:]:
+        prev = merged[-1]
+        gap = item.get("start", 0) - prev.get("end", 0)
+        if item.get("spk") == prev.get("spk") and gap <= MERGE_GAP_MS:
+            prev["text"] += item.get("text", "")
+            prev["end"] = item.get("end", prev["end"])
+        else:
+            merged.append(dict(item))
+    return merged
+
+
 print("正在加载 FunASR 模型（首次运行会自动下载，可能需要几分钟）...")
 model = AutoModel(
     model="paraformer-zh",
@@ -54,7 +75,7 @@ async def transcribe(file: UploadFile = File(...)):
         if result and "sentence_info" in result[0]:
             # 开了 spk_model 之后，FunASR 会把结果按句子拆好，
             # 每句带 start/end（毫秒）和 spk（说话人编号）
-            for item in result[0]["sentence_info"]:
+            for item in merge_consecutive(result[0]["sentence_info"]):
                 segments.append(
                     {
                         "speakerTag": str(item.get("spk", 0)),
