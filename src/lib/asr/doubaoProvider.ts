@@ -103,6 +103,8 @@ async function uploadAndGetUrl(buffer: Buffer, fileName: string, mimeType: strin
 
 async function submitTask(apiKey: string, audioUrl: string, format: string, speakerCount?: number): Promise<string> {
   const requestId = randomUUID()
+  // 排查"转写结果为空"用：把实际提交给豆包的音频链接打出来，方便手动打开确认能不能正常下载播放
+  console.log('[doubao] audioUrl =', audioUrl, ' format =', format)
   const res = await fetch(SUBMIT_URL, {
     method: 'POST',
     headers: {
