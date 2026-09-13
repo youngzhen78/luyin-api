@@ -33,6 +33,14 @@ function autoResize(el: HTMLTextAreaElement | null) {
   el.style.height = `${el.scrollHeight}px`
 }
 
+const ENGINE_LABELS: Record<ASREngine, string> = {
+  local: '本地识别',
+  xfyun: '讯飞云端',
+  bailian: '百炼云端',
+}
+
+const ENGINE_OPTIONS: ASREngine[] = ['local', 'xfyun', 'bailian']
+
 export default function RecordingDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -129,7 +137,7 @@ export default function RecordingDetailPage() {
         title={recording.title}
         subtitle={
           formatTimestamp(recording.duration) +
-          (recording.engine ? ` · ${recording.engine === 'local' ? '本地识别' : '云端识别'}` : '')
+          (recording.engine ? ` · ${ENGINE_LABELS[recording.engine]}` : '')
         }
         left={
           <button onClick={() => router.push('/')} className="p-1 -ml-1 text-gray-400 flex-shrink-0">
@@ -161,23 +169,21 @@ export default function RecordingDetailPage() {
         {recording.status === 'pending' && (
           <div className="flex flex-col items-center gap-3 py-10">
             <p className="text-[13px] text-gray-400">还没有转写，选一种识别方式</p>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => startTranscribe('local')}
-                disabled={!!transcribing}
-                className="px-5 py-2.5 rounded-xl border border-[#378ADD] text-[#378ADD] text-[14px] font-medium active:opacity-70 disabled:opacity-50"
-              >
-                {transcribing === 'local' ? '识别中…' : '本地识别'}
-              </button>
-              <button
-                onClick={() => startTranscribe('xfyun')}
-                disabled={!!transcribing}
-                className="px-5 py-2.5 rounded-xl bg-[#378ADD] text-white text-[14px] font-medium active:opacity-80 disabled:opacity-50"
-              >
-                {transcribing === 'xfyun' ? '识别中…' : '云端识别'}
-              </button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {ENGINE_OPTIONS.map((engine) => (
+                <button
+                  key={engine}
+                  onClick={() => startTranscribe(engine)}
+                  disabled={!!transcribing}
+                  className="px-4 py-2.5 rounded-xl border border-[#378ADD] text-[#378ADD] text-[13px] font-medium active:opacity-70 disabled:opacity-50"
+                >
+                  {transcribing === engine ? '识别中…' : ENGINE_LABELS[engine]}
+                </button>
+              ))}
             </div>
-            <p className="text-[11px] text-gray-300">本地：阿里 FunASR，需要先启动 local-asr/server.py，不出网</p>
+            <p className="text-[11px] text-gray-300 text-center">
+              本地：阿里 FunASR，需要先启动 local-asr/server.py，不出网
+            </p>
           </div>
         )}
 
@@ -191,21 +197,17 @@ export default function RecordingDetailPage() {
         {recording.status === 'error' && (
           <div className="flex flex-col items-center gap-3 py-10">
             <p className="text-[13px] text-red-400">{recording.error || '识别失败'}</p>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => startTranscribe('local')}
-                disabled={!!transcribing}
-                className="px-5 py-2.5 rounded-xl border border-[#378ADD] text-[#378ADD] text-[14px] font-medium active:opacity-70 disabled:opacity-50"
-              >
-                {transcribing === 'local' ? '识别中…' : '本地重试'}
-              </button>
-              <button
-                onClick={() => startTranscribe('xfyun')}
-                disabled={!!transcribing}
-                className="px-5 py-2.5 rounded-xl bg-[#378ADD] text-white text-[14px] font-medium active:opacity-80 disabled:opacity-50"
-              >
-                {transcribing === 'xfyun' ? '识别中…' : '云端重试'}
-              </button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {ENGINE_OPTIONS.map((engine) => (
+                <button
+                  key={engine}
+                  onClick={() => startTranscribe(engine)}
+                  disabled={!!transcribing}
+                  className="px-4 py-2.5 rounded-xl border border-[#378ADD] text-[#378ADD] text-[13px] font-medium active:opacity-70 disabled:opacity-50"
+                >
+                  {transcribing === engine ? '识别中…' : `${ENGINE_LABELS[engine]}重试`}
+                </button>
+              ))}
             </div>
           </div>
         )}
