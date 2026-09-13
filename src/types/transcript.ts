@@ -13,7 +13,7 @@ export interface TranscriptSegment {
 
 export type RecordingStatus = 'pending' | 'transcribing' | 'done' | 'error'
 
-export type ASREngine = 'local' | 'xfyun' | 'bailian'
+export type ASREngine = 'local' | 'xfyun' | 'bailian' | 'doubao'
 
 export interface Recording {
   id: string
