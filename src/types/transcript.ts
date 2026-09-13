@@ -13,6 +13,8 @@ export interface TranscriptSegment {
 
 export type RecordingStatus = 'pending' | 'transcribing' | 'done' | 'error'
 
+export type ASREngine = 'local' | 'xfyun'
+
 export interface Recording {
   id: string
   title: string
@@ -22,6 +24,7 @@ export interface Recording {
   createdAt: number
   status: RecordingStatus
   error?: string
+  engine?: ASREngine
   speakers?: Speaker[]
   segments?: TranscriptSegment[]
 }

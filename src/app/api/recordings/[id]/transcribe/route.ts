@@ -2,19 +2,28 @@ import fs from 'fs'
 import { NextRequest, NextResponse } from 'next/server'
 import { getRecording, saveRecording, audioFilePath } from '@/lib/recordings-store'
 import { getASRProvider } from '@/lib/asr'
+import type { ASREngine } from '@/types/transcript'
 
 export const runtime = 'nodejs'
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const rec = getRecording(params.id)
   if (!rec) return NextResponse.json({ error: '未找到该录音' }, { status: 404 })
+
+  let engine: ASREngine | undefined
+  try {
+    const body = await req.json()
+    engine = body?.engine
+  } catch {
+    // 没传 body 就走默认引擎（ASR_PROVIDER 环境变量）
+  }
 
   rec.status = 'transcribing'
   saveRecording(rec)
 
   try {
     const buffer = fs.readFileSync(audioFilePath(params.id))
-    const provider = getASRProvider()
+    const provider = getASRProvider(engine)
     const rawSegments = await provider.transcribe({
       buffer,
       fileName: rec.fileName,
@@ -31,7 +40,14 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       text: s.text,
     }))
 
-    const updated = { ...rec, status: 'done' as const, speakers, segments, error: undefined }
+    const updated = {
+      ...rec,
+      status: 'done' as const,
+      engine,
+      speakers,
+      segments,
+      error: undefined,
+    }
     saveRecording(updated)
     return NextResponse.json({ recording: updated })
   } catch (err) {
