@@ -87,9 +87,9 @@ async function uploadAndGetUrl(buffer: Buffer, fileName: string, mimeType: strin
   try {
     await client.putObject({ bucket, key, body: buffer, contentType: mimeType })
   } catch (err) {
-    // 桶不存在时尝试自动创建（同名桶在火山引擎账号间是隔离的，可以直接建）
-    const exists = await client.doesBucketExist({ bucket }).catch(() => true)
-    if (exists) throw new Error(`上传音频到 TOS 失败：${describeTosError(err)}`)
+    // TOS 明确告诉我们是桶不存在时才自动建桶，其他错误直接抛出，不瞎猜
+    const isNoSuchBucket = err instanceof TosServerError && err.code === 'NoSuchBucket'
+    if (!isNoSuchBucket) throw new Error(`上传音频到 TOS 失败：${describeTosError(err)}`)
     try {
       await client.createBucket({ bucket })
       await client.putObject({ bucket, key, body: buffer, contentType: mimeType })
