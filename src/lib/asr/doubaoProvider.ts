@@ -190,7 +190,8 @@ export const doubaoProvider: ASRProvider = {
 
     const utterances = result.utterances ?? []
     if (utterances.length === 0) {
-      throw new Error('豆包转写结果为空')
+      // utterances 字段名/结构跟文档对不上时，把原始返回内容带出来方便核对
+      throw new Error(`豆包转写结果为空，原始返回：${JSON.stringify(result)}`)
     }
 
     const segments: RawSegment[] = utterances.map((u) => ({
