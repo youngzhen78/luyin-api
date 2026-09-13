@@ -1,4 +1,4 @@
-import type { Transcript } from '@/types/transcript'
+import type { Speaker, TranscriptSegment } from '@/types/transcript'
 
 export function formatTimestamp(sec: number): string {
   const m = Math.floor(sec / 60)
@@ -6,7 +6,15 @@ export function formatTimestamp(sec: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export function transcriptToMarkdown(t: Transcript): string {
+interface MarkdownSource {
+  title: string
+  fileName: string
+  createdAt: number
+  speakers: Speaker[]
+  segments: TranscriptSegment[]
+}
+
+export function transcriptToMarkdown(t: MarkdownSource): string {
   const speakerName = (id: string) => t.speakers.find((s) => s.id === id)?.name ?? id
 
   const lines = [

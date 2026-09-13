@@ -11,10 +11,17 @@ export interface TranscriptSegment {
   text: string
 }
 
-export interface Transcript {
+export type RecordingStatus = 'pending' | 'transcribing' | 'done' | 'error'
+
+export interface Recording {
+  id: string
   title: string
   fileName: string
+  mimeType: string
+  duration: number
   createdAt: number
-  speakers: Speaker[]
-  segments: TranscriptSegment[]
+  status: RecordingStatus
+  error?: string
+  speakers?: Speaker[]
+  segments?: TranscriptSegment[]
 }
