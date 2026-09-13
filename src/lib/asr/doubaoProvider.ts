@@ -1,7 +1,15 @@
 import { randomUUID } from 'crypto'
-import TosClient from '@volcengine/tos-sdk'
+import TosClient, { TosServerError } from '@volcengine/tos-sdk'
 import type { ASRProvider, RawSegment } from './types'
 import { mergeConsecutiveSegments } from './mergeSegments'
+
+/** TOS 报错信息太简单（比如只有一句 "Access Denied"），补上错误码和 requestId 方便定位 */
+function describeTosError(err: unknown): string {
+  if (err instanceof TosServerError) {
+    return `${err.message}（code: ${err.code}, requestId: ${err.requestId}）`
+  }
+  return err instanceof Error ? err.message : String(err)
+}
 
 /**
  * 火山引擎豆包"大模型录音文件识别"，带说话人分离。
@@ -81,9 +89,13 @@ async function uploadAndGetUrl(buffer: Buffer, fileName: string, mimeType: strin
   } catch (err) {
     // 桶不存在时尝试自动创建（同名桶在火山引擎账号间是隔离的，可以直接建）
     const exists = await client.doesBucketExist({ bucket }).catch(() => true)
-    if (exists) throw err
-    await client.createBucket({ bucket })
-    await client.putObject({ bucket, key, body: buffer, contentType: mimeType })
+    if (exists) throw new Error(`上传音频到 TOS 失败：${describeTosError(err)}`)
+    try {
+      await client.createBucket({ bucket })
+      await client.putObject({ bucket, key, body: buffer, contentType: mimeType })
+    } catch (err2) {
+      throw new Error(`上传音频到 TOS 失败：${describeTosError(err2)}`)
+    }
   }
 
   return client.getPreSignedUrl({ bucket, key, method: 'GET', expires: 3600 })
