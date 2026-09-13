@@ -10,6 +10,8 @@ export interface ASRInput {
   buffer: Buffer
   fileName: string
   mimeType: string
+  /** 预估说话人数量，部分引擎支持用它辅助提升说话人分离准确度 */
+  speakerCount?: number
 }
 
 export interface ASRProvider {

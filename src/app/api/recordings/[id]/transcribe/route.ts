@@ -11,9 +11,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!rec) return NextResponse.json({ error: '未找到该录音' }, { status: 404 })
 
   let engine: ASREngine | undefined
+  let speakerCount: number | undefined
   try {
     const body = await req.json()
     engine = body?.engine
+    speakerCount = body?.speakerCount || undefined
   } catch {
     // 没传 body 就走默认引擎（ASR_PROVIDER 环境变量）
   }
@@ -28,6 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       buffer,
       fileName: rec.fileName,
       mimeType: rec.mimeType,
+      speakerCount,
     })
 
     const speakerTags = Array.from(new Set(rawSegments.map((s) => s.speakerTag)))

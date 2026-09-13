@@ -68,7 +68,7 @@ async function uploadToOss(policy: UploadPolicy, buffer: Buffer, fileName: strin
   return `oss://${key}`
 }
 
-async function submitTask(apiKey: string, ossUrl: string): Promise<string> {
+async function submitTask(apiKey: string, ossUrl: string, speakerCount?: number): Promise<string> {
   const res = await fetch(`${BASE_URL}/api/v1/services/audio/asr/transcription`, {
     method: 'POST',
     headers: {
@@ -85,6 +85,8 @@ async function submitTask(apiKey: string, ossUrl: string): Promise<string> {
         channel_id: [0],
         diarization_enabled: true,
         language_hints: ['zh'],
+        // 说话人数量只是"参考值"，能辅助算法但不保证一定输出这个人数
+        ...(speakerCount ? { speaker_count: speakerCount } : {}),
       },
     }),
   })
@@ -131,12 +133,12 @@ interface BailianSentence {
 
 export const bailianProvider: ASRProvider = {
   name: 'bailian',
-  async transcribe({ buffer, fileName }) {
+  async transcribe({ buffer, fileName, speakerCount }) {
     const apiKey = getApiKey()
 
     const policy = await getUploadPolicy(apiKey)
     const ossUrl = await uploadToOss(policy, buffer, fileName)
-    const taskId = await submitTask(apiKey, ossUrl)
+    const taskId = await submitTask(apiKey, ossUrl, speakerCount)
     const transcriptionUrl = await pollTask(apiKey, taskId)
 
     const resultRes = await fetch(transcriptionUrl)

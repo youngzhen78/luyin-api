@@ -47,6 +47,7 @@ export default function RecordingDetailPage() {
   const [recording, setRecording] = useState<Recording | null>(null)
   const [loading, setLoading] = useState(true)
   const [transcribing, setTranscribing] = useState<ASREngine | null>(null)
+  const [speakerCount, setSpeakerCount] = useState('')
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null)
   const playerRef = useRef<AudioPlayerHandle>(null)
 
@@ -74,7 +75,7 @@ export default function RecordingDetailPage() {
       const res = await fetch(`/api/recordings/${id}/transcribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ engine }),
+        body: JSON.stringify({ engine, speakerCount: Number(speakerCount) || undefined }),
       })
       const data = await res.json()
       if (data.recording) setRecording(data.recording)
@@ -169,6 +170,18 @@ export default function RecordingDetailPage() {
         {recording.status === 'pending' && (
           <div className="flex flex-col items-center gap-3 py-10">
             <p className="text-[13px] text-gray-400">还没有转写，选一种识别方式</p>
+            <label className="flex items-center gap-2 text-[12px] text-gray-400">
+              说话人数（可选，帮助百炼分得更准）
+              <input
+                type="number"
+                min={2}
+                max={100}
+                value={speakerCount}
+                onChange={(e) => setSpeakerCount(e.target.value)}
+                placeholder="自动判断"
+                className="w-16 px-2 py-1 rounded-lg border border-gray-200 text-center text-gray-700 outline-none"
+              />
+            </label>
             <div className="flex flex-wrap items-center justify-center gap-2">
               {ENGINE_OPTIONS.map((engine) => (
                 <button
