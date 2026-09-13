@@ -3,3 +3,8 @@ node_modules
 /data
 .env*.local
 tsconfig.tsbuildinfo
+
+# local-asr/ (Python)
+local-asr/venv
+local-asr/__pycache__
+local-asr/*.pyc
