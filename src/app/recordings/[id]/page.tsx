@@ -7,6 +7,7 @@ import PageHeader from '@/components/PageHeader'
 import AudioPlayer, { type AudioPlayerHandle } from '@/components/AudioPlayer'
 import type { ASREngine, Recording, TranscriptSegment } from '@/types/transcript'
 import { formatTimestamp, transcriptToMarkdown, downloadTextFile } from '@/lib/transcript-export'
+import { ENGINE_LABELS, ENGINE_OPTIONS } from '@/lib/engine-labels'
 
 const BADGE_COLORS = [
   { bg: '#E6F1FB', text: '#378ADD' },
@@ -32,14 +33,6 @@ function autoResize(el: HTMLTextAreaElement | null) {
   el.style.height = 'auto'
   el.style.height = `${el.scrollHeight}px`
 }
-
-const ENGINE_LABELS: Record<ASREngine, string> = {
-  local: '本地识别',
-  xfyun: '讯飞云端',
-  bailian: '百炼云端',
-}
-
-const ENGINE_OPTIONS: ASREngine[] = ['local', 'xfyun', 'bailian']
 
 export default function RecordingDetailPage() {
   const { id } = useParams<{ id: string }>()

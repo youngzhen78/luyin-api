@@ -6,6 +6,7 @@ import { Upload, Trash2 } from 'lucide-react'
 import PageHeader from '@/components/PageHeader'
 import type { Recording, RecordingStatus } from '@/types/transcript'
 import { formatTimestamp } from '@/lib/transcript-export'
+import { ENGINE_LABELS } from '@/lib/engine-labels'
 
 const STATUS_LABEL: Record<RecordingStatus, string> = {
   pending: '未转写',
@@ -79,6 +80,15 @@ export default function RecordingsListPage() {
     setRecordings((list) => list.filter((r) => r.id !== id))
   }
 
+  async function handleRename(id: string, title: string) {
+    setRecordings((list) => list.map((r) => (r.id === id ? { ...r, title } : r)))
+    await fetch(`/api/recordings/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    })
+  }
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="录音转文字" subtitle="识别、区分发言人、导出 Markdown" />
@@ -111,7 +121,17 @@ export default function RecordingsListPage() {
               className="rounded-xl bg-gray-50 p-3 cursor-pointer active:bg-gray-100 transition-colors"
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[14px] font-medium text-gray-900 truncate">{r.title}</p>
+                <input
+                  value={r.title}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) =>
+                    setRecordings((list) =>
+                      list.map((item) => (item.id === r.id ? { ...item, title: e.target.value } : item))
+                    )
+                  }
+                  onBlur={(e) => handleRename(r.id, e.target.value)}
+                  className="flex-1 min-w-0 text-[14px] font-medium text-gray-900 bg-transparent outline-none truncate"
+                />
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -128,6 +148,12 @@ export default function RecordingsListPage() {
                 <span>{formatTimestamp(r.duration)}</span>
                 <span>·</span>
                 <span className={STATUS_COLOR[r.status]}>{STATUS_LABEL[r.status]}</span>
+                {r.engine && (
+                  <>
+                    <span>·</span>
+                    <span>{ENGINE_LABELS[r.engine]}</span>
+                  </>
+                )}
               </div>
             </div>
           ))}
