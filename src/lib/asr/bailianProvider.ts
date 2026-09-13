@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { ASRProvider, RawSegment } from './types'
+import { mergeConsecutiveSegments } from './mergeSegments'
 
 /**
  * 阿里云百炼（DashScope）Paraformer 录音文件识别，带说话人分离。
@@ -154,6 +155,6 @@ export const bailianProvider: ASRProvider = {
       end: s.end_time / 1000,
       text: s.text,
     }))
-    return segments
+    return mergeConsecutiveSegments(segments)
   },
 }

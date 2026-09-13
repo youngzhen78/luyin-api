@@ -24,20 +24,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# VAD 按停顿断句，同一个人说话中间只要停顿超过一点就会被拆成好几句。
-# 这里把同一个说话人、间隔小于这个阈值（毫秒）的相邻句子合并成一段，
-# 减少刷屏一样的碎片化短句。觉得合并太多/太少可以调这个数。
-MERGE_GAP_MS = 1200
-
-
+# VAD 按停顿断句，同一个人说话中间只要停顿久一点就会被拆成好几句。
+# 这里把连续的、说话人相同的句子合并成一段——不管中间停顿多久，
+# 只要没换人，就还是算这个人的一段发言。
 def merge_consecutive(sentence_info):
     if not sentence_info:
         return []
     merged = [dict(sentence_info[0])]
     for item in sentence_info[1:]:
         prev = merged[-1]
-        gap = item.get("start", 0) - prev.get("end", 0)
-        if item.get("spk") == prev.get("spk") and gap <= MERGE_GAP_MS:
+        if item.get("spk") == prev.get("spk"):
             prev["text"] += item.get("text", "")
             prev["end"] = item.get("end", prev["end"])
         else:
