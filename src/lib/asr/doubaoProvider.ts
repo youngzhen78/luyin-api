@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import TosClient, { TosServerError } from '@volcengine/tos-sdk'
+import TosClient, { TosServerError, ACLType } from '@volcengine/tos-sdk'
 import type { ASRProvider, RawSegment } from './types'
 import { mergeConsecutiveSegments } from './mergeSegments'
 
@@ -18,8 +18,9 @@ function describeTosError(err: unknown): string {
  * - 查询结果 POST https://openspeech.bytedance.com/api/v3/auc/bigmodel/query
  *
  * 这个接口不接受直接上传文件，只认音频 URL，且火山引擎没有百炼那种免费临时
- * 存储，所以要先把本地音频传到火山引擎对象存储 TOS，生成一个带签名的临时
- * 下载链接，再拿这个链接提交转写任务。
+ * 存储，所以要先把本地音频传到火山引擎对象存储 TOS，换一个公网可访问的
+ * URL，再拿这个链接提交转写任务（为什么是公开 URL 而不是签名链接，见下面
+ * uploadAndGetUrl 的注释）。
  *
  * 需要环境变量：VOLC_API_KEY、TOS_ACCESS_KEY_ID、TOS_SECRET_ACCESS_KEY，
  * 可选 TOS_BUCKET（默认 luyin-api-audio）、TOS_REGION（默认 cn-beijing）。
@@ -43,7 +44,7 @@ function getResourceId(): string {
   return process.env.VOLC_RESOURCE_ID || 'volc.bigasr.auc'
 }
 
-function getTosClient(): TosClient {
+function getTosConfig() {
   const accessKeyId = process.env.TOS_ACCESS_KEY_ID
   const accessKeySecret = process.env.TOS_SECRET_ACCESS_KEY
   if (!accessKeyId || !accessKeySecret) {
@@ -51,6 +52,11 @@ function getTosClient(): TosClient {
   }
   const region = process.env.TOS_REGION || 'cn-beijing'
   const endpoint = process.env.TOS_ENDPOINT || `tos-${region}.volces.com`
+  return { accessKeyId, accessKeySecret, region, endpoint }
+}
+
+function getTosClient(): TosClient {
+  const { accessKeyId, accessKeySecret, region, endpoint } = getTosConfig()
   return new TosClient({ accessKeyId, accessKeySecret, region, endpoint })
 }
 
@@ -77,28 +83,40 @@ function detectFormat(fileName: string): string {
   return format
 }
 
-/** 上传到 TOS 并生成一个 1 小时有效期的预签名下载链接 */
+/**
+ * 上传到 TOS 并返回可公网访问的下载链接。
+ *
+ * 本来想用 getPreSignedUrl() 生成带签名的临时链接（不用把文件设成公开），
+ * 但装的 @volcengine/tos-sdk（2.7.6~2.9.1 都是，翻了源码确认）在这个方法里
+ * 有个 bug：算签名时把 region 错传成了 endpoint 域名，导致生成的链接签名
+ * 是错的，豆包那边下载时会被 TOS 拒绝，识别结果就变成空的。
+ * 绕开办法：上传时把这个对象设成 public-read，直接拼公开 URL，不走签名。
+ * 文件名是随机 UUID，别人猜不到，对个人使用场景足够；如果不放心，可以把
+ * 转写完的录音单独设置生命周期规则自动删除。
+ */
 async function uploadAndGetUrl(buffer: Buffer, fileName: string, mimeType: string): Promise<string> {
   const client = getTosClient()
+  const { endpoint } = getTosConfig()
   const bucket = getBucket()
   const ext = fileName.includes('.') ? fileName.slice(fileName.lastIndexOf('.')) : ''
   const key = `luyin-api/${randomUUID()}${ext}`
 
   try {
-    await client.putObject({ bucket, key, body: buffer, contentType: mimeType })
+    await client.putObject({ bucket, key, body: buffer, contentType: mimeType, acl: ACLType.ACLPublicRead })
   } catch (err) {
     // TOS 明确告诉我们是桶不存在时才自动建桶，其他错误直接抛出，不瞎猜
     const isNoSuchBucket = err instanceof TosServerError && err.code === 'NoSuchBucket'
     if (!isNoSuchBucket) throw new Error(`上传音频到 TOS 失败：${describeTosError(err)}`)
     try {
       await client.createBucket({ bucket })
-      await client.putObject({ bucket, key, body: buffer, contentType: mimeType })
+      await client.putObject({ bucket, key, body: buffer, contentType: mimeType, acl: ACLType.ACLPublicRead })
     } catch (err2) {
       throw new Error(`上传音频到 TOS 失败：${describeTosError(err2)}`)
     }
   }
 
-  return client.getPreSignedUrl({ bucket, key, method: 'GET', expires: 3600 })
+  const encodedKey = key.split('/').map(encodeURIComponent).join('/')
+  return `https://${bucket}.${endpoint}/${encodedKey}`
 }
 
 async function submitTask(apiKey: string, audioUrl: string, format: string, speakerCount?: number): Promise<string> {
