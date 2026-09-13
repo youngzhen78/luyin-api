@@ -248,7 +248,7 @@ export default function RecordingDetailPage() {
                   <textarea
                     ref={autoResize}
                     defaultValue={seg.text}
-                    onClick={() => seekTo(seg.start)}
+                    onMouseDown={() => seekTo(seg.start)}
                     onInput={(e) => {
                       autoResize(e.currentTarget)
                       setSegmentsLocal(

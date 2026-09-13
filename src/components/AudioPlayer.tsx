@@ -31,8 +31,16 @@ const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(function Aud
     seek(sec: number) {
       const audio = audioRef.current
       if (!audio) return
-      audio.currentTime = sec
-      audio.play().catch(() => {})
+      const apply = () => {
+        audio.currentTime = sec
+        audio.play().catch(() => {})
+      }
+      // 元数据（时长等）还没加载完时设置 currentTime 可能被浏览器悄悄重置为 0
+      if (audio.readyState >= 1) {
+        apply()
+      } else {
+        audio.addEventListener('loadedmetadata', apply, { once: true })
+      }
     },
   }))
 
